@@ -1,0 +1,26 @@
+services:
+  web:
+    build: .
+    command: python app.py
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    volumes:
+      - audit-data:/data
+      - audit-logs:/logs
+    restart: unless-stopped
+
+  collector:
+    build: .
+    command: python collector.py
+    env_file:
+      - .env
+    volumes:
+      - audit-data:/data
+      - audit-logs:/logs
+    restart: unless-stopped
+
+volumes:
+  audit-data:
+  audit-logs:

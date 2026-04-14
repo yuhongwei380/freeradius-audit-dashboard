@@ -1,0 +1,871 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FreeRadius 审计仪表盘</title>
+  <meta name="description" content="FreeRadius 审计日志可视化仪表盘">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #07111f;
+      --bg-2: #0d1b2d;
+      --panel: rgba(11, 24, 39, 0.72);
+      --panel-strong: rgba(12, 28, 46, 0.9);
+      --border: rgba(167, 189, 219, 0.16);
+      --text: #ecf3ff;
+      --muted: #9eb3cc;
+      --accent: #4dd0ae;
+      --accent-2: #f8b56a;
+      --accent-3: #7cc7ff;
+      --danger: #ff6b6b;
+      --shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+      --radius: 24px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at top left, rgba(77, 208, 174, 0.22), transparent 28%),
+        radial-gradient(circle at 85% 12%, rgba(124, 199, 255, 0.2), transparent 24%),
+        radial-gradient(circle at 85% 85%, rgba(248, 181, 106, 0.16), transparent 22%),
+        linear-gradient(180deg, #050b14 0%, #09131f 40%, #0a1422 100%);
+      color: var(--text);
+      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+    }
+
+    body {
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+      background-size: 42px 42px;
+      mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.8), transparent 90%);
+      opacity: 0.35;
+    }
+
+    .shell {
+      position: relative;
+      width: min(1440px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 40px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.9fr);
+      gap: 20px;
+      align-items: stretch;
+      margin-bottom: 20px;
+    }
+
+    .hero-card,
+    .glass-card {
+      background: linear-gradient(180deg, rgba(16, 33, 53, 0.88), rgba(8, 17, 29, 0.76));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(20px);
+    }
+
+    .hero-card {
+      padding: 28px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero-card::after {
+      content: "";
+      position: absolute;
+      inset: auto -12% -35% auto;
+      width: 340px;
+      height: 340px;
+      background: radial-gradient(circle, rgba(77, 208, 174, 0.22), transparent 68%);
+      filter: blur(2px);
+      pointer-events: none;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(77, 208, 174, 0.12);
+      color: #8bf3d6;
+      border: 1px solid rgba(77, 208, 174, 0.18);
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .hero h1 {
+      margin: 18px 0 12px;
+      font-family: "Space Grotesk", sans-serif;
+      font-size: clamp(2.35rem, 5vw, 4.6rem);
+      line-height: 0.98;
+      letter-spacing: -0.05em;
+      max-width: 10ch;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 70ch;
+      color: var(--muted);
+      line-height: 1.7;
+      font-size: 1.02rem;
+    }
+
+    .hero-meta {
+      display: grid;
+      gap: 14px;
+    }
+
+    .meta-stack {
+      padding: 22px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .meta-row:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .meta-label {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .meta-value {
+      font-size: 1rem;
+      font-weight: 600;
+      text-align: right;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(77, 208, 174, 0.14);
+      color: #b8ffe9;
+      font-weight: 600;
+      width: fit-content;
+    }
+
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 8px rgba(77, 208, 174, 0.1);
+    }
+
+    .toolbar {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .stat {
+      grid-column: span 3;
+      padding: 22px;
+      min-height: 130px;
+      display: grid;
+      gap: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat::after {
+      content: "";
+      position: absolute;
+      inset: auto -15% -35% auto;
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(124, 199, 255, 0.15), transparent 62%);
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 0.92rem;
+      letter-spacing: 0.02em;
+    }
+
+    .stat-value {
+      font-family: "Space Grotesk", sans-serif;
+      font-size: clamp(1.8rem, 3vw, 2.7rem);
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .stat-sub {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .filters {
+      grid-column: span 12;
+      padding: 18px 22px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      justify-content: space-between;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 180px;
+    }
+
+    .field label {
+      color: var(--muted);
+      font-size: 0.84rem;
+    }
+
+    select, input {
+      appearance: none;
+      border: 1px solid rgba(167, 189, 219, 0.16);
+      border-radius: 14px;
+      background: rgba(5, 11, 20, 0.56);
+      color: var(--text);
+      padding: 12px 14px;
+      outline: none;
+      min-width: 140px;
+      font: inherit;
+    }
+
+    input::placeholder {
+      color: #7690b0;
+    }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 16px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+    }
+
+    .primary-btn {
+      background: linear-gradient(135deg, #4dd0ae, #7cc7ff);
+      color: #06111c;
+      box-shadow: 0 14px 30px rgba(77, 208, 174, 0.18);
+    }
+
+    .ghost-btn {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .main-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.6fr) minmax(300px, 0.9fr);
+      gap: 18px;
+    }
+
+    .panel {
+      padding: 20px;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .panel-title {
+      margin: 0;
+      font-size: 1.04rem;
+      letter-spacing: 0.01em;
+    }
+
+    .panel-note {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .table-wrap {
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 14px 10px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      vertical-align: top;
+    }
+
+    th {
+      color: #aac1da;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      font-weight: 700;
+    }
+
+    td {
+      color: #e8f0fb;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .action-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(124, 199, 255, 0.13);
+      color: #bfe4ff;
+      border: 1px solid rgba(124, 199, 255, 0.14);
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .action-chip.connect {
+      background: rgba(77, 208, 174, 0.14);
+      color: #b8ffe9;
+    }
+
+    .action-chip.disconnect {
+      background: rgba(248, 181, 106, 0.14);
+      color: #ffe1bb;
+    }
+
+    .action-chip.reject {
+      background: rgba(255, 107, 107, 0.14);
+      color: #ffc9c9;
+    }
+
+    .sidebar {
+      display: grid;
+      gap: 18px;
+    }
+
+    .breakdown {
+      display: grid;
+      gap: 14px;
+    }
+
+    .breakdown-item {
+      display: grid;
+      gap: 8px;
+    }
+
+    .breakdown-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: baseline;
+      font-size: 0.92rem;
+    }
+
+    .track {
+      width: 100%;
+      height: 12px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .fill {
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--accent), var(--accent-3));
+      box-shadow: 0 0 20px rgba(124, 199, 255, 0.22);
+    }
+
+    .empty-state {
+      padding: 28px;
+      border: 1px dashed rgba(167, 189, 219, 0.28);
+      border-radius: 20px;
+      color: var(--muted);
+      text-align: center;
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .footer-note {
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .pulse {
+      animation: pulse 2.4s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+
+    @media (max-width: 1180px) {
+      .hero,
+      .main-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .stat {
+        grid-column: span 6;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .shell {
+        width: min(100% - 20px, 100%);
+        padding-top: 14px;
+      }
+
+      .hero-card,
+      .panel,
+      .meta-stack {
+        padding: 18px;
+      }
+
+      .stat {
+        grid-column: span 12;
+      }
+
+      .toolbar {
+        gap: 12px;
+      }
+
+      .filters {
+        align-items: stretch;
+      }
+
+      .filter-group {
+        width: 100%;
+      }
+
+      .field {
+        min-width: 0;
+        flex: 1 1 160px;
+      }
+
+      select, input, button {
+        width: 100%;
+      }
+
+      table,
+      thead,
+      tbody,
+      th,
+      td,
+      tr {
+        display: block;
+      }
+
+      thead {
+        display: none;
+      }
+
+      tbody tr {
+        padding: 14px 0;
+      }
+
+      td {
+        border-bottom: none;
+        padding: 6px 0;
+      }
+
+      td::before {
+        content: attr(data-label);
+        display: block;
+        color: #8fa6c0;
+        font-size: 0.74rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 4px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div class="hero-card">
+        <span class="eyebrow">FreeRadius Audit Dashboard</span>
+        <h1>把审计日志变成可读的运营面板。</h1>
+        <p>
+          这个页面直接读取本地 SQLite 审计库，展示认证动作、终端信息和最近日志。
+          你可以通过筛选条件快速定位 CONNECT、DISCONNECT、REJECT 等事件，便于排查接入问题。
+        </p>
+      </div>
+      <div class="glass-card meta-stack">
+        <div class="status-pill"><span class="status-dot pulse"></span><span id="connectionStatus">正在加载数据</span></div>
+        <div class="meta-row">
+          <div class="meta-label">最新事件</div>
+          <div class="meta-value" id="latestEvent">--</div>
+        </div>
+        <div class="meta-row">
+          <div class="meta-label">当前视图</div>
+          <div class="meta-value" id="viewCount">-- 条日志</div>
+        </div>
+        <div class="meta-row">
+          <div class="meta-label">接口</div>
+          <div class="meta-value">/api/audit · /api/summary</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="toolbar">
+      <article class="glass-card stat">
+        <div class="stat-label">总日志数</div>
+        <div class="stat-value" id="totalLogs">0</div>
+        <div class="stat-sub">数据库中累计写入的审计记录</div>
+      </article>
+      <article class="glass-card stat">
+        <div class="stat-label">独立用户</div>
+        <div class="stat-value" id="uniqueUsers">0</div>
+        <div class="stat-sub">去重后的用户名数量</div>
+      </article>
+      <article class="glass-card stat">
+        <div class="stat-label">终端设备</div>
+        <div class="stat-value" id="uniqueDevices">0</div>
+        <div class="stat-sub">去重后的 MAC 地址数量</div>
+      </article>
+      <article class="glass-card stat">
+        <div class="stat-label">当前筛选</div>
+        <div class="stat-value" id="filterLabel">ALL</div>
+        <div class="stat-sub">按照动作类型查看日志</div>
+      </article>
+
+      <div class="glass-card filters">
+        <div class="filter-group">
+          <div class="field">
+            <label for="actionFilter">动作筛选</label>
+            <select id="actionFilter">
+              <option value="">全部动作</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="limitInput">显示条数</label>
+            <input id="limitInput" type="number" min="10" max="500" step="10" value="25">
+          </div>
+        </div>
+        <div class="filter-group">
+          <button class="ghost-btn" id="resetBtn" type="button">重置筛选</button>
+          <button class="primary-btn" id="refreshBtn" type="button">刷新数据</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="main-grid">
+      <article class="glass-card panel table-wrap">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">最近审计日志</h2>
+            <div class="panel-note" id="tableNote">加载最新数据中...</div>
+          </div>
+          <div class="panel-note" id="lastRefresh">--</div>
+        </div>
+        <div id="tableHolder"></div>
+      </article>
+
+      <aside class="sidebar">
+        <article class="glass-card panel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">动作分布</h2>
+              <div class="panel-note">根据当前数据库汇总</div>
+            </div>
+          </div>
+          <div class="breakdown" id="breakdownList"></div>
+        </article>
+
+        <article class="glass-card panel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">快速说明</h2>
+              <div class="panel-note">页面用途与数据来源</div>
+            </div>
+          </div>
+          <div class="empty-state">
+            这是一个轻量级运维看板，直接展示 collector 写入的 audit_logs.db。
+            如果暂时没有数据，先运行采集器，再刷新页面即可看到日志列表。
+          </div>
+        </article>
+      </aside>
+    </section>
+
+    <div class="footer-note">
+      <span>数据源：SQLite / access_logs</span>
+      <span>界面会随接口返回自动更新</span>
+    </div>
+  </main>
+
+  <script>
+    const state = {
+      action: "",
+      limit: 25,
+    };
+
+    const elements = {
+      actionFilter: document.getElementById('actionFilter'),
+      limitInput: document.getElementById('limitInput'),
+      refreshBtn: document.getElementById('refreshBtn'),
+      resetBtn: document.getElementById('resetBtn'),
+      connectionStatus: document.getElementById('connectionStatus'),
+      latestEvent: document.getElementById('latestEvent'),
+      viewCount: document.getElementById('viewCount'),
+      totalLogs: document.getElementById('totalLogs'),
+      uniqueUsers: document.getElementById('uniqueUsers'),
+      uniqueDevices: document.getElementById('uniqueDevices'),
+      filterLabel: document.getElementById('filterLabel'),
+      tableHolder: document.getElementById('tableHolder'),
+      tableNote: document.getElementById('tableNote'),
+      lastRefresh: document.getElementById('lastRefresh'),
+      breakdownList: document.getElementById('breakdownList'),
+    };
+
+    function formatTimestamp(value) {
+      if (!value) {
+        return '--';
+      }
+
+      const date = new Date(String(value).replace(' ', 'T'));
+      if (Number.isNaN(date.getTime())) {
+        return value;
+      }
+
+      return new Intl.DateTimeFormat('zh-CN', {
+        dateStyle: 'medium',
+        timeStyle: 'medium',
+      }).format(date);
+    }
+
+    function formatAction(action) {
+      return String(action || 'UNKNOWN').toUpperCase();
+    }
+
+    function normalizeActionClass(action) {
+      const normalized = String(action || '').toLowerCase();
+      if (normalized.includes('connect')) return 'connect';
+      if (normalized.includes('disconnect')) return 'disconnect';
+      if (normalized.includes('reject') || normalized.includes('fail')) return 'reject';
+      return '';
+    }
+
+    function renderEmpty(message) {
+      elements.tableHolder.innerHTML = `
+        <div class="empty-state" style="margin-top: 4px;">
+          ${message}
+        </div>
+      `;
+    }
+
+    function renderTable(rows) {
+      if (!rows.length) {
+        renderEmpty('当前筛选条件下没有日志记录。');
+        elements.viewCount.textContent = '0 条日志';
+        return;
+      }
+
+      const body = rows.map((row) => {
+        const action = formatAction(row.action);
+        const actionClass = normalizeActionClass(action);
+        return `
+          <tr>
+            <td data-label="时间">${formatTimestamp(row.timestamp)}</td>
+            <td data-label="动作"><span class="action-chip ${actionClass}">${action}</span></td>
+            <td data-label="用户">${row.username || '--'}</td>
+            <td data-label="MAC">${row.mac_address || '--'}</td>
+            <td data-label="客户端 IP">${row.client_ip || '--'}</td>
+            <td data-label="详情">${row.details || '--'}</td>
+          </tr>
+        `;
+      }).join('');
+
+      elements.tableHolder.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>时间</th>
+              <th>动作</th>
+              <th>用户</th>
+              <th>MAC</th>
+              <th>客户端 IP</th>
+              <th>详情</th>
+            </tr>
+          </thead>
+          <tbody>${body}</tbody>
+        </table>
+      `;
+      elements.viewCount.textContent = `${rows.length} 条日志`;
+    }
+
+    function renderBreakdown(actions) {
+      if (!actions.length) {
+        elements.breakdownList.innerHTML = '<div class="empty-state">暂无动作统计，等待采集器写入第一批数据。</div>';
+        return;
+      }
+
+      const maxCount = Math.max(...actions.map((item) => item.count), 1);
+      elements.breakdownList.innerHTML = actions.map((item) => {
+        const percentage = Math.round((item.count / maxCount) * 100);
+        return `
+          <div class="breakdown-item">
+            <div class="breakdown-top">
+              <span>${formatAction(item.action)}</span>
+              <span class="muted">${item.count}</span>
+            </div>
+            <div class="track"><div class="fill" style="width:${percentage}%"></div></div>
+          </div>
+        `;
+      }).join('');
+
+      const options = ['<option value="">全部动作</option>'].concat(
+        actions.map((item) => `<option value="${item.action}">${formatAction(item.action)}</option>`)
+      );
+      elements.actionFilter.innerHTML = options.join('');
+      elements.actionFilter.value = state.action;
+    }
+
+    async function loadSummary() {
+      const response = await fetch('/api/summary');
+      if (!response.ok) {
+        throw new Error(`summary request failed: ${response.status}`);
+      }
+      return response.json();
+    }
+
+    async function loadLogs() {
+      const query = new URLSearchParams();
+      query.set('limit', state.limit);
+      if (state.action) {
+        query.set('action', state.action);
+      }
+      const response = await fetch(`/api/audit?${query.toString()}`);
+      if (!response.ok) {
+        throw new Error(`audit request failed: ${response.status}`);
+      }
+      return response.json();
+    }
+
+    async function refreshDashboard() {
+      elements.connectionStatus.textContent = '正在加载数据';
+      elements.tableNote.textContent = '请求接口中...';
+      elements.refreshBtn.disabled = true;
+      elements.refreshBtn.style.opacity = '0.75';
+
+      try {
+        const [summaryPayload, logsPayload] = await Promise.all([loadSummary(), loadLogs()]);
+        const summary = summaryPayload.data || {};
+        const rows = logsPayload.data || [];
+
+        elements.totalLogs.textContent = summary.total_logs ?? 0;
+        elements.uniqueUsers.textContent = summary.unique_users ?? 0;
+        elements.uniqueDevices.textContent = summary.unique_devices ?? 0;
+        elements.latestEvent.textContent = formatTimestamp(summary.latest_event);
+        elements.filterLabel.textContent = state.action ? formatAction(state.action) : 'ALL';
+        elements.tableNote.textContent = `共返回 ${logsPayload.total_returned ?? rows.length} 条记录`;
+        elements.connectionStatus.textContent = '数据已更新';
+        elements.lastRefresh.textContent = new Intl.DateTimeFormat('zh-CN', {
+          dateStyle: 'medium',
+          timeStyle: 'medium',
+        }).format(new Date());
+        renderBreakdown(summary.actions || []);
+        renderTable(rows);
+      } catch (error) {
+        console.error(error);
+        elements.connectionStatus.textContent = '加载失败';
+        elements.tableNote.textContent = '无法连接到后端接口，请确认 Flask 服务已启动。';
+        elements.tableHolder.innerHTML = '<div class="empty-state">接口请求失败，请稍后重试。</div>';
+        elements.breakdownList.innerHTML = '<div class="empty-state">无法读取动作统计。</div>';
+      } finally {
+        elements.refreshBtn.disabled = false;
+        elements.refreshBtn.style.opacity = '1';
+      }
+    }
+
+    elements.refreshBtn.addEventListener('click', () => {
+      state.action = elements.actionFilter.value;
+      state.limit = Number(elements.limitInput.value || 25);
+      refreshDashboard();
+    });
+
+    elements.resetBtn.addEventListener('click', () => {
+      state.action = '';
+      state.limit = 25;
+      elements.actionFilter.value = '';
+      elements.limitInput.value = 25;
+      refreshDashboard();
+    });
+
+    elements.actionFilter.addEventListener('change', () => {
+      state.action = elements.actionFilter.value;
+      refreshDashboard();
+    });
+
+    elements.limitInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        state.limit = Number(elements.limitInput.value || 25);
+        refreshDashboard();
+      }
+    });
+
+    refreshDashboard();
+  </script>
+</body>
+</html>

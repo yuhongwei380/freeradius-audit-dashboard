@@ -4,11 +4,29 @@ import schedule
 import time
 import re
 import json
+import os
+import logging
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
 # 配置参数
-EXPORTER_URL = "http://<你的Radius服务器IP>:9090/api/logs"
-API_TOKEN = "super-secret-audit-key-2026"
-DB_FILE = "audit_logs.db"
+def env_or_default(name, default):
+    value = os.getenv(name)
+    if value is None or value == "":
+        return default
+    return value
+
+
+DB_FILE = env_or_default("AUDIT_DB_FILE", "audit_logs.db")
+API_TOKEN = env_or_default("RADIUS_API_TOKEN", "super-secret-audit-key-2026")
+EXPORTER_URL = env_or_default("RADIUS_EXPORTER_URL", None)
+LOG_DIR = Path(env_or_default("AUDIT_LOG_DIR", "/logs"))
+LOG_FILE = LOG_DIR / "collector.log"
+
+if not EXPORTER_URL:
+    radius_ip = env_or_default("RADIUS_SERVER_IP", "<你的Radius服务器IP>")
+    radius_port = env_or_default("RADIUS_SERVER_PORT", "9090")
+    EXPORTER_URL = f"http://{radius_ip}:{radius_port}/api/logs"
 
 # 正则表达式解析日志格式
 # 格式示例: [2026-04-14 14:18:17] DISCONNECT | User: phoenix.yu@vesoft.com | MAC: a66e-9206-a4e3 | Client_IP: 192.168.10.81 | Duration: 459s
@@ -48,6 +66,28 @@ def init_db():
     conn.commit()
     conn.close()
 
+
+def setup_logging():
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+    formatter = logging.Formatter(
+        "%(asctime)s | %(levelname)s | %(name)s | %(message)s"
+    )
+
+    file_handler = RotatingFileHandler(LOG_FILE, maxBytes=1_000_000, backupCount=3)
+    file_handler.setFormatter(formatter)
+
+    stream_handler = logging.StreamHandler()
+    stream_handler.setFormatter(formatter)
+
+    root_logger = logging.getLogger()
+    root_logger.handlers.clear()
+    root_logger.setLevel(logging.INFO)
+    root_logger.addHandler(file_handler)
+    root_logger.addHandler(stream_handler)
+
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+
 def get_last_line():
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
@@ -65,7 +105,7 @@ def update_last_line(line):
 
 def fetch_and_store_logs():
     last_line = get_last_line()
-    print(f"开始拉取数据，当前游标 start_line={last_line}")
+    logging.info("fetch cycle started | start_line=%s", last_line)
     
     headers = {"Authorization": f"Bearer {API_TOKEN}"}
     params = {"start_line": last_line}
@@ -73,7 +113,7 @@ def fetch_and_store_logs():
     try:
         response = requests.get(EXPORTER_URL, headers=headers, params=params, timeout=10)
         if response.status_code != 200:
-            print(f"API 请求失败: {response.status_code}")
+            logging.error("exporter request failed | status=%s | url=%s", response.status_code, EXPORTER_URL)
             return
             
         result = response.json()
@@ -81,7 +121,7 @@ def fetch_and_store_logs():
         data = result.get("data", [])
         
         if not data:
-            print("没有新数据。")
+            logging.info("no new data returned | end_line=%s", end_line)
             return
             
         conn = sqlite3.connect(DB_FILE)
@@ -99,27 +139,34 @@ def fetch_and_store_logs():
                       log_dict['mac'], log_dict['client_ip'], log_dict['details'], raw_log))
                 parsed_count += 1
             else:
-                print(f"解析失败跳过: {raw_log}")
+                logging.warning("log parse failed, skipped | raw_log=%s", raw_log)
                 
         conn.commit()
         conn.close()
         
         # 成功落库后，更新游标
         update_last_line(end_line)
-        print(f"成功入库 {parsed_count} 条记录，更新游标为 {end_line}")
+        logging.info("fetch cycle completed | inserted=%s | end_line=%s", parsed_count, end_line)
         
     except Exception as e:
-        print(f"执行任务时发生错误: {e}")
+        logging.exception("fetch cycle failed")
 
 if __name__ == "__main__":
-    init_db()
-    # 立即执行一次
-    fetch_and_store_logs()
-    
-    # 设定定时任务，每分钟执行一次
-    schedule.every(1).minutes.do(fetch_and_store_logs)
-    print("采集器已启动，按 Ctrl+C 停止...")
-    
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
+    try:
+        setup_logging()
+        init_db()
+        logging.info("collector starting | db=%s | exporter_url=%s", DB_FILE, EXPORTER_URL)
+
+        # 立即执行一次
+        fetch_and_store_logs()
+        
+        # 设定定时任务，每分钟执行一次
+        schedule.every(1).minutes.do(fetch_and_store_logs)
+        logging.info("collector running | interval=60s")
+        
+        while True:
+            schedule.run_pending()
+            time.sleep(1)
+    except Exception:
+        logging.exception("collector failed to start")
+        raise
