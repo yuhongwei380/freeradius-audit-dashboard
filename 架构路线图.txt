@@ -1,0 +1,76 @@
+一、 架构演进对比
+旧方案（异步轮询/拉取模式）
+
+华为 AC ➔ FreeRADIUS ➔ 写入本地 device_access.log ➔ Go Exporter (提供文件流) ➔ Python Collector (定时轮询 + 正则解析) ➔ SQLite
+
+痛点：存在定时器延迟（非实时）、依赖脆弱的正则表达式解析文本、组件过多（维护成本高）。
+
+新方案（事件驱动/推送模式 - 目标架构）
+
+华为 AC ➔ FreeRADIUS (rlm_rest 模块) ➔ HTTP POST (标准 JSON) ➔ Python Web API ➔ SQLite
+
+优势：毫秒级实时、无需正则清洗数据、砍掉中间两个冗余组件、架构极简。
+
+二、 核心组件与职责划分
+在新方案中，整个系统被精简为两个核心节点：
+
+1. 触发端：FreeRADIUS (利用内置 rlm_rest 模块)
+职责：不再单纯把数据写进死文件，而是化身为一个“API 客户端”。
+
+动作：在收到华为 AC 发来的 1813 计费报文（Start/Stop/Interim-Update）的瞬间，提取关键属性（如 %{User-Name}, %{Framed-IP-Address}）。
+
+输出：将提取到的属性组装成标准的 JSON 格式，带上鉴权 Token，直接向 Python 后端发起 HTTP POST 请求。
+
+2. 接收端：独立审计 Web 服务 (Python + Flask + SQLite)
+职责：作为统一的后端大脑，同时负责“接收数据”和“展示数据”。
+
+动作 A（写）：提供 /api/webhook/radius 接口。验证 Token 后，接收 FreeRADIUS 推送来的 JSON 并直接入库。
+
+动作 B（读）：保持原有的 /api/audit 接口，供未来的前端看板拉取历史数据。
+
+三、 实施步骤拆解 (Roadmap)
+为了平滑过渡，我们将整个改造过程分为 3 个实施阶段：
+
+阶段 1：打造“接收容器” (改造 Python 后端)
+停用旧采集器：停止并废弃之前写的 collector.py（定时拉取脚本）。
+
+新增 Webhook 接口：在 app.py 中新增一个 POST /api/webhook/radius 路由。
+
+实现安全与入库逻辑：
+
+在接口入口处校验 Header 中的 Authorization: Bearer <Token>。
+
+直接解析 Request 中的 JSON 数据体。
+
+将解析出的字段（用户、MAC、IP、动作、时长等）执行 INSERT 插入 SQLite 的 access_logs 表。
+
+阶段 2：激活“推送引擎” (配置 FreeRADIUS)
+定义 REST 模块：在 freeradius-config 中新建配置文件（如 rest_acct）。
+
+配置请求参数：
+
+设定目标 URI（指向你 Python 服务的 Webhook 接口）。
+
+设定 HTTP Method 为 POST。
+
+配置鉴权 Header。
+
+定义 JSON 映射：配置 body = 'json'，并将 RADIUS 字典变量（如 %{Calling-Station-Id}）映射为 JSON 键值对（如 "mac_address": "..."）。
+
+阶段 3：服务整合与切换 (Docker 层面)
+清理冗余组件：从 docker-compose.yml 中彻底删除 audit-exporter 服务。
+
+更新容器配置：
+
+修改 Dockerfile，将 rest_acct 文件拷贝至 mods-available 并链接到 mods-enabled 启用。
+
+修改 default 虚拟服务器的 accounting 块，将触发器从自定义文件记录替换为 rest_acct 模块调用。
+
+一键重启与验证：执行 Docker 重建，使用终端连接 Wi-Fi，观察 Python 服务的控制台是否能瞬间打印出 201 Created 接收成功的日志。
+
+四、 风险评估与注意事项
+网络连通性：FreeRADIUS 容器必须能够通过指定的 IP 和端口（例如 http://<宿主机IP>:5000）访问到 Python 服务。如果使用 Docker 部署，建议确认网络模式（如 host 模式或桥接网络的 IP 解析）。
+
+并发处理能力：当大量员工同时上下班连接 Wi-Fi 时，FreeRADIUS 会瞬间产生大量并发 HTTP 请求。Python 端（Flask）在生产环境中建议搭配 gunicorn 或开启多线程，避免阻塞 FreeRADIUS 的处理流程。
+
+异常兜底（可选）：如果 Python 服务临时宕机，FreeRADIUS 推送会失败。可以在 FreeRADIUS 中配置“失败回退机制”，例如：推送失败时，将日志暂时写入本地的一个 fallback.log 中。
