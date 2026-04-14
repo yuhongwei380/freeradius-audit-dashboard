@@ -106,22 +106,51 @@ def status():
 @app.route('/api/audit', methods=['GET'])
 def get_audit_logs():
     action_filter = request.args.get('action')
+    username_filter = request.args.get('username')
+    mac_filter = request.args.get('mac')
+    client_ip_filter = request.args.get('client_ip')
+    start_time = request.args.get('start_time')
+    end_time = request.args.get('end_time')
     limit = request.args.get('limit', 100, type=int)
-    
+
     conn = get_db_connection()
     query = "SELECT * FROM access_logs"
     params = []
-    
+    conditions = []
+
     if action_filter:
-        query += " WHERE action = ?"
+        conditions.append("action = ?")
         params.append(action_filter.upper())
-        
+
+    if username_filter:
+        conditions.append("username LIKE ?")
+        params.append(f"%{username_filter}%")
+
+    if mac_filter:
+        conditions.append("mac_address LIKE ?")
+        params.append(f"%{mac_filter}%")
+
+    if client_ip_filter:
+        conditions.append("client_ip LIKE ?")
+        params.append(f"%{client_ip_filter}%")
+
+    if start_time:
+        conditions.append("timestamp >= ?")
+        params.append(start_time)
+
+    if end_time:
+        conditions.append("timestamp <= ?")
+        params.append(end_time)
+
+    if conditions:
+        query += " WHERE " + " AND ".join(conditions)
+
     query += " ORDER BY id DESC LIMIT ?"
     params.append(limit)
-    
+
     rows = conn.execute(query, params).fetchall()
     conn.close()
-    
+
     data = [dict(ix) for ix in rows]
     return jsonify({"status": "success", "total_returned": len(data), "data": data})
 

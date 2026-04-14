@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FreeRadius 审计仪表盘</title>
-  <meta name="description" content="FreeRadius 审计日志可视化仪表盘">
+  <title>FreeRadius 审计日志控制台</title>
+  <meta name="description" content="FreeRadius 审计日志监控与查询控制台">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
@@ -60,30 +60,30 @@
 
     .shell {
       position: relative;
-      width: min(1440px, calc(100% - 32px));
+      width: min(1320px, calc(100% - 32px));
       margin: 0 auto;
-      padding: 28px 0 40px;
+      padding: 20px 0 32px;
     }
 
     .hero {
       display: grid;
-      grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.9fr);
-      gap: 20px;
+      grid-template-columns: minmax(0, 1.6fr) minmax(240px, 0.9fr);
+      gap: 16px;
       align-items: stretch;
-      margin-bottom: 20px;
+      margin-bottom: 16px;
     }
 
     .hero-card,
     .glass-card {
       background: linear-gradient(180deg, rgba(16, 33, 53, 0.88), rgba(8, 17, 29, 0.76));
       border: 1px solid var(--border);
-      border-radius: var(--radius);
+      border-radius: 18px;
       box-shadow: var(--shadow);
       backdrop-filter: blur(20px);
     }
 
     .hero-card {
-      padding: 28px;
+      padding: 22px 24px;
       overflow: hidden;
       position: relative;
     }
@@ -115,31 +115,31 @@
     }
 
     .hero h1 {
-      margin: 18px 0 12px;
+      margin: 14px 0 10px;
       font-family: "Space Grotesk", sans-serif;
-      font-size: clamp(2.35rem, 5vw, 4.6rem);
-      line-height: 0.98;
-      letter-spacing: -0.05em;
-      max-width: 10ch;
+      font-size: clamp(1.8rem, 4vw, 3.2rem);
+      line-height: 1;
+      letter-spacing: -0.04em;
+      max-width: 12ch;
     }
 
     .hero p {
       margin: 0;
       max-width: 70ch;
       color: var(--muted);
-      line-height: 1.7;
-      font-size: 1.02rem;
+      line-height: 1.6;
+      font-size: 0.95rem;
     }
 
     .hero-meta {
       display: grid;
-      gap: 14px;
+      gap: 12px;
     }
 
     .meta-stack {
-      padding: 22px;
+      padding: 18px;
       display: grid;
-      gap: 14px;
+      gap: 12px;
     }
 
     .meta-row {
@@ -189,16 +189,16 @@
     .toolbar {
       display: grid;
       grid-template-columns: repeat(12, minmax(0, 1fr));
-      gap: 16px;
-      margin-bottom: 18px;
+      gap: 14px;
+      margin-bottom: 16px;
     }
 
     .stat {
       grid-column: span 3;
-      padding: 22px;
-      min-height: 130px;
+      padding: 18px;
+      min-height: 110px;
       display: grid;
-      gap: 12px;
+      gap: 10px;
       position: relative;
       overflow: hidden;
     }
@@ -215,30 +215,32 @@
 
     .stat-label {
       color: var(--muted);
-      font-size: 0.92rem;
+      font-size: 0.85rem;
       letter-spacing: 0.02em;
     }
 
     .stat-value {
       font-family: "Space Grotesk", sans-serif;
-      font-size: clamp(1.8rem, 3vw, 2.7rem);
+      font-size: clamp(1.5rem, 2.8vw, 2.2rem);
       font-weight: 700;
       line-height: 1;
     }
 
     .stat-sub {
       color: var(--muted);
-      font-size: 0.92rem;
+      font-size: 0.85rem;
     }
 
     .filters {
       grid-column: span 12;
-      padding: 18px 22px;
+      padding: 16px 20px;
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       gap: 12px;
       justify-content: space-between;
+      position: relative;
+      z-index: 50;
     }
 
     .filter-group {
@@ -262,6 +264,8 @@
 
     select, input {
       appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
       border: 1px solid rgba(167, 189, 219, 0.16);
       border-radius: 14px;
       background: rgba(5, 11, 20, 0.56);
@@ -274,6 +278,115 @@
 
     input::placeholder {
       color: #7690b0;
+    }
+
+    .custom-select {
+      position: relative;
+      min-width: 140px;
+    }
+
+    .custom-select-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      border: 1px solid rgba(167, 189, 219, 0.16);
+      border-radius: 14px;
+      background: rgba(5, 11, 20, 0.56);
+      color: var(--text);
+      cursor: pointer;
+      user-select: none;
+      transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .custom-select-trigger:hover {
+      border-color: rgba(167, 189, 219, 0.28);
+    }
+
+    .custom-select.open .custom-select-trigger {
+      border-color: rgba(77, 208, 174, 0.4);
+      box-shadow: 0 0 0 3px rgba(77, 208, 174, 0.1);
+    }
+
+    .custom-select-arrow {
+      width: 0;
+      height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 5px solid #9eb3cc;
+      margin-left: 8px;
+      transition: transform 160ms ease;
+    }
+
+    .custom-select.open .custom-select-arrow {
+      transform: rotate(180deg);
+    }
+
+    .custom-select-options {
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      max-height: 280px;
+      overflow-y: auto;
+      background: linear-gradient(180deg, rgba(12, 28, 46, 0.96), rgba(8, 20, 34, 0.98));
+      border: 1px solid rgba(167, 189, 219, 0.2);
+      border-radius: 14px;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+      z-index: 1000;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-8px);
+      transition: opacity 160ms ease, transform 160ms ease, visibility 160ms;
+    }
+
+    .custom-select.open .custom-select-options {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .custom-option {
+      padding: 12px 14px;
+      cursor: pointer;
+      transition: background 120ms ease;
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+
+    .custom-option:first-child {
+      border-radius: 13px 13px 0 0;
+    }
+
+    .custom-option:last-child {
+      border-radius: 0 0 13px 13px;
+    }
+
+    .custom-option:hover {
+      background: rgba(77, 208, 174, 0.12);
+    }
+
+    .custom-option[data-selected] {
+      background: rgba(77, 208, 174, 0.18);
+      color: #8bf3d6;
+      font-weight: 600;
+    }
+
+    .custom-options::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .custom-options::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .custom-options::-webkit-scrollbar-thumb {
+      background: rgba(167, 189, 219, 0.2);
+      border-radius: 3px;
+    }
+
+    .custom-options::-webkit-scrollbar-thumb:hover {
+      background: rgba(167, 189, 219, 0.35);
     }
 
     button {
@@ -304,31 +417,31 @@
 
     .main-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1.6fr) minmax(300px, 0.9fr);
-      gap: 18px;
+      grid-template-columns: minmax(0, 1.6fr) minmax(280px, 0.9fr);
+      gap: 16px;
     }
 
     .panel {
-      padding: 20px;
+      padding: 18px 20px;
     }
 
     .panel-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 12px;
-      margin-bottom: 16px;
+      gap: 10px;
+      margin-bottom: 14px;
     }
 
     .panel-title {
       margin: 0;
-      font-size: 1.04rem;
+      font-size: 0.98rem;
       letter-spacing: 0.01em;
     }
 
     .panel-note {
       color: var(--muted);
-      font-size: 0.92rem;
+      font-size: 0.85rem;
     }
 
     .table-wrap {
@@ -342,14 +455,14 @@
 
     th, td {
       text-align: left;
-      padding: 14px 10px;
+      padding: 12px 10px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.06);
       vertical-align: top;
     }
 
     th {
       color: #aac1da;
-      font-size: 0.8rem;
+      font-size: 0.76rem;
       text-transform: uppercase;
       letter-spacing: 0.09em;
       font-weight: 700;
@@ -357,7 +470,7 @@
 
     td {
       color: #e8f0fb;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       line-height: 1.5;
     }
 
@@ -395,12 +508,12 @@
 
     .sidebar {
       display: grid;
-      gap: 18px;
+      gap: 16px;
     }
 
     .breakdown {
       display: grid;
-      gap: 14px;
+      gap: 12px;
     }
 
     .breakdown-item {
@@ -432,18 +545,19 @@
     }
 
     .empty-state {
-      padding: 28px;
+      padding: 22px;
       border: 1px dashed rgba(167, 189, 219, 0.28);
-      border-radius: 20px;
+      border-radius: 16px;
       color: var(--muted);
       text-align: center;
       background: rgba(255, 255, 255, 0.03);
+      font-size: 0.9rem;
     }
 
     .footer-note {
-      margin-top: 18px;
+      margin-top: 16px;
       color: var(--muted);
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       display: flex;
       justify-content: space-between;
       gap: 12px;
@@ -473,13 +587,13 @@
     @media (max-width: 720px) {
       .shell {
         width: min(100% - 20px, 100%);
-        padding-top: 14px;
+        padding-top: 12px;
       }
 
       .hero-card,
       .panel,
       .meta-stack {
-        padding: 18px;
+        padding: 16px;
       }
 
       .stat {
@@ -487,7 +601,7 @@
       }
 
       .toolbar {
-        gap: 12px;
+        gap: 10px;
       }
 
       .filters {
@@ -521,7 +635,7 @@
       }
 
       tbody tr {
-        padding: 14px 0;
+        padding: 12px 0;
       }
 
       td {
@@ -545,15 +659,19 @@
   <main class="shell">
     <section class="hero">
       <div class="hero-card">
-        <span class="eyebrow">FreeRadius Audit Dashboard</span>
-        <h1>把审计日志变成可读的运营面板。</h1>
+        <span class="eyebrow">FreeRadius Audit Console</span>
+        <h1>FreeRadius 审计日志控制台</h1>
         <p>
-          这个页面直接读取本地 SQLite 审计库，展示认证动作、终端信息和最近日志。
-          你可以通过筛选条件快速定位 CONNECT、DISCONNECT、REJECT 等事件，便于排查接入问题。
+          查询并分析 FreeRadius 认证事件日志，支持按动作类型筛选，
+          快速定位用户接入、断开和拒绝等认证事件，便于排查网络接入问题。
         </p>
       </div>
       <div class="glass-card meta-stack">
         <div class="status-pill"><span class="status-dot pulse"></span><span id="connectionStatus">正在加载数据</span></div>
+        <div class="meta-row">
+          <div class="meta-label">时间范围</div>
+          <div class="meta-value" id="timeRangeLabel">最近 1 小时</div>
+        </div>
         <div class="meta-row">
           <div class="meta-label">最新事件</div>
           <div class="meta-value" id="latestEvent">--</div>
@@ -594,10 +712,49 @@
       <div class="glass-card filters">
         <div class="filter-group">
           <div class="field">
-            <label for="actionFilter">动作筛选</label>
-            <select id="actionFilter">
-              <option value="">全部动作</option>
-            </select>
+            <label>时间范围</label>
+            <div class="custom-select" data-id="timeRange">
+              <div class="custom-select-trigger" data-selected="1h">
+                <span>最近 1 小时</span>
+                <div class="custom-select-arrow"></div>
+              </div>
+              <div class="custom-select-options">
+                <div class="custom-option" data-value="15m">最近 15 分钟</div>
+                <div class="custom-option" data-value="30m">最近 30 分钟</div>
+                <div class="custom-option" data-value="1h" data-selected>最近 1 小时</div>
+                <div class="custom-option" data-value="24h">最近 24 小时</div>
+                <div class="custom-option" data-value="7d">最近 7 天</div>
+                <div class="custom-option" data-value="custom">自定义日期</div>
+              </div>
+            </div>
+          </div>
+          <div class="field" id="customDateField" style="display: none;">
+            <label for="customDate">选择日期</label>
+            <input id="customDate" type="date">
+          </div>
+          <div class="field">
+            <label>动作类型</label>
+            <div class="custom-select" data-id="actionFilter">
+              <div class="custom-select-trigger">
+                <span>全部动作</span>
+                <div class="custom-select-arrow"></div>
+              </div>
+              <div class="custom-select-options">
+                <div class="custom-option" data-value="" data-selected>全部动作</div>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label for="usernameFilter">用户名</label>
+            <input id="usernameFilter" type="text" placeholder="输入用户名搜索">
+          </div>
+          <div class="field">
+            <label for="macFilter">MAC 地址</label>
+            <input id="macFilter" type="text" placeholder="输入 MAC 地址">
+          </div>
+          <div class="field">
+            <label for="ipFilter">客户端 IP</label>
+            <input id="ipFilter" type="text" placeholder="输入客户端 IP">
           </div>
           <div class="field">
             <label for="limitInput">显示条数</label>
@@ -658,16 +815,26 @@
   <script>
     const state = {
       action: "",
+      username: "",
+      mac: "",
+      clientIp: "",
+      timeRange: "1h",
+      customDate: "",
       limit: 25,
     };
 
     const elements = {
-      actionFilter: document.getElementById('actionFilter'),
+      customDateField: document.getElementById('customDateField'),
+      customDate: document.getElementById('customDate'),
+      usernameFilter: document.getElementById('usernameFilter'),
+      macFilter: document.getElementById('macFilter'),
+      ipFilter: document.getElementById('ipFilter'),
       limitInput: document.getElementById('limitInput'),
       refreshBtn: document.getElementById('refreshBtn'),
       resetBtn: document.getElementById('resetBtn'),
       connectionStatus: document.getElementById('connectionStatus'),
       latestEvent: document.getElementById('latestEvent'),
+      timeRangeLabel: document.getElementById('timeRangeLabel'),
       viewCount: document.getElementById('viewCount'),
       totalLogs: document.getElementById('totalLogs'),
       uniqueUsers: document.getElementById('uniqueUsers'),
@@ -678,6 +845,128 @@
       lastRefresh: document.getElementById('lastRefresh'),
       breakdownList: document.getElementById('breakdownList'),
     };
+
+    function initCustomSelects() {
+      document.querySelectorAll('.custom-select').forEach(select => {
+        const trigger = select.querySelector('.custom-select-trigger');
+        const options = select.querySelector('.custom-select-options');
+        const selectId = select.dataset.id;
+
+        trigger.addEventListener('click', (e) => {
+          e.stopPropagation();
+          document.querySelectorAll('.custom-select').forEach(s => {
+            if (s !== select) s.classList.remove('open');
+          });
+          select.classList.toggle('open');
+        });
+
+        options.querySelectorAll('.custom-option').forEach(option => {
+          option.addEventListener('click', () => {
+            const value = option.dataset.value;
+            const text = option.textContent;
+
+            trigger.querySelector('span').textContent = text;
+            options.querySelector('[data-selected]')?.removeAttribute('data-selected');
+            option.setAttribute('data-selected', '');
+
+            select.classList.remove('open');
+
+            if (selectId === 'timeRange') {
+              state.timeRange = value;
+              if (value === 'custom') {
+                elements.customDateField.style.display = '';
+              } else {
+                elements.customDateField.style.display = 'none';
+              }
+              refreshDashboard();
+            } else if (selectId === 'actionFilter') {
+              state.action = value;
+              refreshDashboard();
+            }
+          });
+        });
+      });
+
+      document.addEventListener('click', () => {
+        document.querySelectorAll('.custom-select').forEach(s => s.classList.remove('open'));
+      });
+    }
+
+    function updateActionFilterOptions(actions) {
+      const actionSelect = document.querySelector('.custom-select[data-id="actionFilter"]');
+      const optionsContainer = actionSelect.querySelector('.custom-select-options');
+      const currentValue = state.action;
+
+      const options = ['<div class="custom-option" data-value="">全部动作</div>'].concat(
+        actions.map(item => {
+          const action = String(item.action || 'UNKNOWN').toUpperCase();
+          const selected = action === currentValue ? ' data-selected' : '';
+          return `<div class="custom-option" data-value="${item.action}"${selected}>${action}</div>`;
+        })
+      );
+
+      optionsContainer.innerHTML = options.join('');
+
+      const trigger = actionSelect.querySelector('.custom-select-trigger');
+      trigger.querySelector('span').textContent = currentValue ? String(currentValue).toUpperCase() : '全部动作';
+    }
+
+    function calculateTimeRange(timeRange, customDate) {
+      const now = new Date();
+      let startTime;
+
+      switch (timeRange) {
+        case '15m':
+          startTime = new Date(now.getTime() - 15 * 60 * 1000);
+          break;
+        case '30m':
+          startTime = new Date(now.getTime() - 30 * 60 * 1000);
+          break;
+        case '1h':
+          startTime = new Date(now.getTime() - 60 * 60 * 1000);
+          break;
+        case '24h':
+          startTime = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          break;
+        case '7d':
+          startTime = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case 'custom':
+          if (customDate) {
+            startTime = new Date(customDate + 'T00:00:00');
+            const endTime = new Date(customDate + 'T23:59:59');
+            return {
+              startTime: startTime.toISOString().slice(0, 19).replace('T', ' '),
+              endTime: endTime.toISOString().slice(0, 19).replace('T', ' ')
+            };
+          }
+          startTime = new Date(now.getTime() - 60 * 60 * 1000);
+          break;
+        default:
+          startTime = new Date(now.getTime() - 60 * 60 * 1000);
+      }
+
+      return {
+        startTime: startTime.toISOString().slice(0, 19).replace('T', ' '),
+        endTime: now.toISOString().slice(0, 19).replace('T', ' ')
+      };
+    }
+
+    function getTimeRangeLabel(timeRange, customDate) {
+      const labels = {
+        '15m': '最近 15 分钟',
+        '30m': '最近 30 分钟',
+        '1h': '最近 1 小时',
+        '24h': '最近 24 小时',
+        '7d': '最近 7 天'
+      };
+      
+      if (timeRange === 'custom' && customDate) {
+        return `自定义: ${customDate}`;
+      }
+      
+      return labels[timeRange] || '最近 1 小时';
+    }
 
     function formatTimestamp(value) {
       if (!value) {
@@ -775,11 +1064,7 @@
         `;
       }).join('');
 
-      const options = ['<option value="">全部动作</option>'].concat(
-        actions.map((item) => `<option value="${item.action}">${formatAction(item.action)}</option>`)
-      );
-      elements.actionFilter.innerHTML = options.join('');
-      elements.actionFilter.value = state.action;
+      updateActionFilterOptions(actions);
     }
 
     async function loadSummary() {
@@ -793,9 +1078,24 @@
     async function loadLogs() {
       const query = new URLSearchParams();
       query.set('limit', state.limit);
+      
+      const { startTime, endTime } = calculateTimeRange(state.timeRange, state.customDate);
+      query.set('start_time', startTime);
+      query.set('end_time', endTime);
+      
       if (state.action) {
         query.set('action', state.action);
       }
+      if (state.username) {
+        query.set('username', state.username);
+      }
+      if (state.mac) {
+        query.set('mac', state.mac);
+      }
+      if (state.clientIp) {
+        query.set('client_ip', state.clientIp);
+      }
+      
       const response = await fetch(`/api/audit?${query.toString()}`);
       if (!response.ok) {
         throw new Error(`audit request failed: ${response.status}`);
@@ -818,6 +1118,7 @@
         elements.uniqueUsers.textContent = summary.unique_users ?? 0;
         elements.uniqueDevices.textContent = summary.unique_devices ?? 0;
         elements.latestEvent.textContent = formatTimestamp(summary.latest_event);
+        elements.timeRangeLabel.textContent = getTimeRangeLabel(state.timeRange, state.customDate);
         elements.filterLabel.textContent = state.action ? formatAction(state.action) : 'ALL';
         elements.tableNote.textContent = `共返回 ${logsPayload.total_returned ?? rows.length} 条记录`;
         elements.connectionStatus.textContent = '数据已更新';
@@ -840,23 +1141,58 @@
     }
 
     elements.refreshBtn.addEventListener('click', () => {
-      state.action = elements.actionFilter.value;
+      state.username = elements.usernameFilter.value.trim();
+      state.mac = elements.macFilter.value.trim();
+      state.clientIp = elements.ipFilter.value.trim();
+      state.customDate = elements.customDate.value;
       state.limit = Number(elements.limitInput.value || 25);
       refreshDashboard();
     });
 
     elements.resetBtn.addEventListener('click', () => {
+      state.timeRange = '1h';
+      state.customDate = '';
       state.action = '';
+      state.username = '';
+      state.mac = '';
+      state.clientIp = '';
       state.limit = 25;
-      elements.actionFilter.value = '';
+
+      const timeRangeSelect = document.querySelector('.custom-select[data-id="timeRange"]');
+      timeRangeSelect.querySelector('[data-selected]')?.removeAttribute('data-selected');
+      timeRangeSelect.querySelector('[data-value="1h"]').setAttribute('data-selected', '');
+      timeRangeSelect.querySelector('.custom-select-trigger span').textContent = '最近 1 小时';
+
+      const actionSelect = document.querySelector('.custom-select[data-id="actionFilter"]');
+      actionSelect.querySelector('[data-selected]')?.removeAttribute('data-selected');
+      actionSelect.querySelector('[data-value=""]').setAttribute('data-selected', '');
+      actionSelect.querySelector('.custom-select-trigger span').textContent = '全部动作';
+
+      elements.customDate.value = '';
+      elements.customDateField.style.display = 'none';
+      elements.usernameFilter.value = '';
+      elements.macFilter.value = '';
+      elements.ipFilter.value = '';
       elements.limitInput.value = 25;
       refreshDashboard();
     });
 
-    elements.actionFilter.addEventListener('change', () => {
-      state.action = elements.actionFilter.value;
+    elements.customDate.addEventListener('change', () => {
+      state.customDate = elements.customDate.value;
       refreshDashboard();
     });
+
+    function handleInputKeydown(event, elementKey) {
+      if (event.key === 'Enter') {
+        const value = event.target.value.trim();
+        state[elementKey] = value;
+        refreshDashboard();
+      }
+    }
+
+    elements.usernameFilter.addEventListener('keydown', (event) => handleInputKeydown(event, 'username'));
+    elements.macFilter.addEventListener('keydown', (event) => handleInputKeydown(event, 'mac'));
+    elements.ipFilter.addEventListener('keydown', (event) => handleInputKeydown(event, 'clientIp'));
 
     elements.limitInput.addEventListener('keydown', (event) => {
       if (event.key === 'Enter') {
@@ -865,6 +1201,7 @@
       }
     });
 
+    initCustomSelects();
     refreshDashboard();
   </script>
 </body>
